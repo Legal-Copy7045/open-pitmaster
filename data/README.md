@@ -1,6 +1,6 @@
 # Open Pitmaster data
 
-Shared smoker cooks: 1 so far. Every record is anonymous and was shared by choice (see ../PRIVACY.md).
+Shared smoker cooks: 0 so far. Every record is anonymous and was shared by choice (see ../PRIVACY.md).
 
 - `cooks.jsonl` / `cooks.csv`: every shared cook (format: ../format/README.md).
 - `aggregates.json`: typical times and how cooks turned out, by cut, weight, pit and outside temperature (groups
