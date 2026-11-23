@@ -47,9 +47,10 @@ export const FIELDS = {
 export function validate(record) {
   if (!record || typeof record !== "object" || Array.isArray(record)) return "record must be an object";
   const keys = Object.keys(record);
-  for (const k of keys) if (!(k in FIELDS)) return `unexpected field ${k}`;
+  // (own properties only: "constructor", "__proto__"... are not fields)
+  for (const k of keys) if (!Object.hasOwn(FIELDS, k)) return `unexpected field ${k}`;
   for (const [k, ok] of Object.entries(FIELDS)) {
-    if (!(k in record)) return `missing field ${k}`;
+    if (!Object.hasOwn(record, k)) return `missing field ${k}`;
     if (!ok(record[k])) return `bad value for ${k}`;
   }
   // Plausibility: a stall can't be longer than the cook.
@@ -62,8 +63,40 @@ async function sha256hex(s) {
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Stores per day, per Cloudflare location (counted in the edge cache: no extra KV writes). Real use is a handful a
+// day; this keeps a flood from many addresses from using up the KV write quota (shares and the dataset build).
+const DAILY_CAP = 200;
+async function underDailyCap() {
+  if (typeof caches === "undefined") return true;  // (tests)
+  const cache = caches.default, day = new Date().toISOString().slice(0, 10);
+  const key = new Request("https://cap.invalid/" + day);
+  const hit = await cache.match(key);
+  const n = hit ? parseInt(await hit.text(), 10) || 0 : 0;
+  if (n >= DAILY_CAP) return false;
+  await cache.put(key, new Response(String(n + 1), { headers: { "cache-control": "max-age=90000" } }));
+  return true;
+}
+
+// The public page's one inline script, allowed by its hash (no 'unsafe-inline' for scripts).
+let pageCsp = null;
+async function csp() {
+  if (pageCsp) return pageCsp;
+  const m = SITE.match(/<script>([\s\S]*?)<\/script>/);
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(m ? m[1] : ""));
+  const b64 = btoa(String.fromCharCode(...new Uint8Array(d)));
+  pageCsp = `default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-${b64}'; connect-src https://raw.githubusercontent.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+  return pageCsp;
+}
+
+async function limited(env, key) {
+  // Cloudflare's rate limiter: counted at the edge, nothing stored here. Without it the Worker refuses (fails closed).
+  if (!env.RL) return true;
+  const { success } = await env.RL.limit({ key });
+  return !success;
+}
+
 const json = (body, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
 
 async function listAll(kv, prefix) {
   const out = [];
@@ -93,15 +126,16 @@ export default {
       if ((url.pathname === "/" || url.pathname === "/index.html") && request.method === "GET") {
         if ((request.headers.get("accept") || "").includes("text/html"))
           return new Response(SITE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
-            "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://raw.githubusercontent.com; base-uri 'none'; form-action 'none'" } });
+            "content-security-policy": await csp(), "x-content-type-options": "nosniff", "referrer-policy": "no-referrer" } });
         return json({ what: "Open Pitmaster: anonymous, opt-in shared smoker cooks", page: url.origin + "/", privacy: "https://github.com/Legal-Copy7045/open-pitmaster/blob/main/PRIVACY.md" });
       }
 
       if (url.pathname === "/v1/cooks" && request.method === "POST") {
-        if (env.RL) {  // Cloudflare's rate limiter: counted at the edge, nothing stored here
-          const { success } = await env.RL.limit({ key: request.headers.get("cf-connecting-ip") || "x" });
-          if (!success) return json({ error: "too many uploads, try later" }, 429);
-        }
+        // JSON only: a cross-site form or no-cors fetch from some web page can't send this type without a CORS
+        // preflight, which this Worker never answers, so other sites can't make their visitors upload.
+        if (!/^application\/json\b/i.test(request.headers.get("content-type") || "")) return json({ error: "send application/json" }, 415);
+        if (!env.RL) return json({ error: "uploads are paused" }, 503);
+        if (await limited(env, request.headers.get("cf-connecting-ip") || "x")) return json({ error: "too many uploads, try later" }, 429);
         const text = await request.text();
         if (text.length > 4096) return json({ error: "too large" }, 413);
         let body;
@@ -110,15 +144,18 @@ export default {
         const err = validate(rec) || (typeof kh === "string" && /^[0-9a-f]{64}$/.test(kh) ? null : "bad key_hash");
         if (err) return json({ error: err }, 400);
         if (body.test === true) return json({ ok: true, test: true }, 202);  // checks the path end to end, stores nothing
+        if (!(await underDailyCap())) return json({ error: "too many uploads today, try tomorrow" }, 503);
         if (await env.COOKS.get("k:" + rec.id) !== null || await env.COOKS.get("d:" + rec.id) !== null)
           return json({ error: "already received" }, 409);
-        await env.COOKS.put("c:" + rec.id, "", { metadata: { r: rec }, expiration: now + 30 * DAY });
-        await env.COOKS.put("k:" + rec.id, kh);
+        const clean = Object.fromEntries(Object.keys(FIELDS).map(k => [k, rec[k]]));  // exactly the published fields
+        await env.COOKS.put("c:" + rec.id, "", { metadata: { r: clean }, expiration: now + 30 * DAY });
+        await env.COOKS.put("k:" + rec.id, kh, { expirationTtl: 365 * DAY });
         return json({ ok: true }, 201);
       }
 
       const del = url.pathname.match(/^\/v1\/cooks\/([0-9a-f]{32})$/);
       if (del && request.method === "DELETE") {
+        if (await limited(env, "del:" + (request.headers.get("cf-connecting-ip") || "x"))) return json({ error: "too many requests, try later" }, 429);
         const id = del[1], key = request.headers.get("x-delete-key") || "";
         const stored = await env.COOKS.get("k:" + id);
         if (stored === null) return json({ error: "not found" }, 404);
@@ -134,11 +171,12 @@ export default {
       if (url.pathname === "/v1/released" && request.method === "GET") {
         const snap = await env.COOKS.get("s:released");
         if (snap !== null) return new Response(snap, { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
+        if (await limited(env, "rel:" + (request.headers.get("cf-connecting-ip") || "x"))) return json({ error: "too many requests, try later" }, 429);
         const cooks = await listAll(env.COOKS, "c:");
         const records = shuffle(cooks.filter(k => k.metadata && k.metadata.r).map(k => k.metadata.r));
         const deleted = (await listAll(env.COOKS, "d:")).map(k => k.name.slice(2));
         const body = JSON.stringify({ records, deleted });
-        await env.COOKS.put("s:released", body, { expirationTtl: DAY });
+        try { await env.COOKS.put("s:released", body, { expirationTtl: DAY }); } catch { /* still served; listed again next time */ }
         return new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
       }
 

@@ -50,3 +50,11 @@ def test_build(tmp_path):
     src.write_text(json.dumps({"records": incoming["records"], "deleted": [f"{0:032x}"]}))
     cb.main(["x", str(data), "--released", str(src)])
     assert len((data / "cooks.jsonl").read_text().splitlines()) == 5
+
+
+def test_a_burst_of_look_alike_cooks_is_capped(tmp_path):
+    """Someone uploading many identical cooks to steer an average gets at most MAX_NEW_PER_GROUP into one batch."""
+    data, src = tmp_path / "data", tmp_path / "released.json"
+    src.write_text(json.dumps({"records": [_rec(i, total_h=4.0, stall_h=1.0) for i in range(50)], "deleted": []}))
+    assert cb.main(["x", str(data), "--released", str(src)]) == 0
+    assert len((data / "cooks.jsonl").read_text().splitlines()) == cb.MAX_NEW_PER_GROUP

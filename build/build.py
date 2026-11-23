@@ -30,6 +30,10 @@ TAGS = ["juicy", "tender", "dry", "tough", "undercooked", "just right", "overcoo
 FIELDS = ["v", "id", "grill", "release", "season", "cut", "weight_lb", "wrapped", "pit_f", "target_f", "stall_h",
           "total_h", "outside_f", "rating", "tags"]
 MIN_N = 3  # a group needs this many cooks before its averages are published
+# At most this many new cooks per cut, weight and pit band in one nightly batch: real sharing is a few cooks a day,
+# so a burst of look-alike uploads (someone trying to steer an average) is mostly left out. The rest are dropped,
+# not queued.
+MAX_NEW_PER_GROUP = 5
 
 
 def _num(v, lo, hi, step, null=True):
@@ -169,13 +173,21 @@ def main(argv: list[str]) -> int:
             if line.strip():
                 r = json.loads(line)
                 have[r["id"]] = r
-    added = dropped = 0
+    added = dropped = capped = 0
+    per_group: dict[tuple, int] = {}
     for r in incoming.get("records", []):
-        if validate(r) is None and r["id"] not in have:
-            have[r["id"]] = {k: r[k] for k in FIELDS}
-            added += 1
-        elif validate(r) is not None:
+        if validate(r) is not None:
             dropped += 1
+            continue
+        if r["id"] in have:
+            continue
+        g = (r["cut"], band(r["weight_lb"], WEIGHT, "lb"), band(r["pit_f"], PIT, "F"))
+        if per_group.get(g, 0) >= MAX_NEW_PER_GROUP:
+            capped += 1
+            continue
+        per_group[g] = per_group.get(g, 0) + 1
+        have[r["id"]] = {k: r[k] for k in FIELDS}
+        added += 1
     removed = 0
     for i in incoming.get("deleted", []):
         if have.pop(i, None) is not None:
@@ -190,7 +202,8 @@ def main(argv: list[str]) -> int:
     (data / "aggregates.json").write_text(json.dumps(aggregate(records), indent=1, ensure_ascii=False) + "\n")
     (data / "README.md").write_text(README.format(n=len(records), min_n=MIN_N))
     (data / "LICENSE").write_text(CC0)
-    print(f"{len(records)} cooks: {added} added, {removed} removed (deleted by their owners), {dropped} refused")
+    print(f"{len(records)} cooks: {added} added, {removed} removed (deleted by their owners), {dropped} refused, "
+          f"{capped} over the per-group limit")
     return 0
 
 
