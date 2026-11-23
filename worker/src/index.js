@@ -137,6 +137,28 @@ async function limited(rl, key) {
   }
 }
 
+// Upload bodies are tiny (one banded record): refuse a declared length over the limit before reading anything, and
+// stop reading (cancelling the stream) as soon as more than that has arrived, so a large body is never held in full.
+const MAX_BODY = 4096;
+async function readLimited(request, max) {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > max) return null;
+  if (!request.body) return "";
+  const reader = request.body.getReader(), chunks = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > max) { try { await reader.cancel(); } catch { /* already closed */ } return null; }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(n);
+  let o = 0;
+  for (const c of chunks) { all.set(c, o); o += c.byteLength; }
+  return new TextDecoder().decode(all);
+}
+
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
 
@@ -181,8 +203,8 @@ export default {
         if (!env.RL || !env.RL_UPLOAD || !env.CAP) return json({ error: "uploads are paused" }, 503);
         const who = clientKey(request.headers.get("cf-connecting-ip"));
         if (await limited(env.RL, "up:" + who)) return json({ error: "too many uploads, try later" }, 429);
-        const text = await request.text();
-        if (text.length > 4096) return json({ error: "too large" }, 413);
+        const text = await readLimited(request, MAX_BODY);
+        if (text === null) return json({ error: "too large" }, 413);
         let body;
         try { body = JSON.parse(text); } catch { return json({ error: "invalid JSON" }, 400); }
         const rec = body && body.record, kh = body && body.key_hash;

@@ -166,3 +166,18 @@ test("rate limits count an IPv6 /64 as one sender, an IPv4 address whole", async
   await worker.fetch(req("POST", "/v1/cooks", { record: rec32(2), key_hash: sha("b") }, { "cf-connecting-ip": "2001:db8:1:2:ffff::9" }), env);
   assert.deepEqual(keys, ["2001:db8:1:2::/64", "2001:db8:1:2::/64"]);
 });
+
+test("an oversized body is refused before it's read in full", async () => {
+  const env = envOK();
+  // A declared length over the limit: refused without reading.
+  let r = await worker.fetch(new Request("https://share.example/v1/cooks", { method: "POST", body: "x".repeat(10),
+    headers: { "content-type": "application/json", "content-length": "999999" } }), env);
+  assert.equal(r.status, 413);
+  // No declared length (a stream): stops once over the limit.
+  let sent = 0;
+  const stream = new ReadableStream({ pull(c) { if (sent > 20) { c.close(); return; } sent++; c.enqueue(new Uint8Array(1024)); } });
+  r = await worker.fetch(new Request("https://share.example/v1/cooks", { method: "POST", body: stream, duplex: "half",
+    headers: { "content-type": "application/json" } }), env);
+  assert.equal(r.status, 413);
+  assert.ok(sent < 10, `read ${sent} KB before refusing`);
+});
