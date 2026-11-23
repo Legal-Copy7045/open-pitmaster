@@ -27,7 +27,7 @@ The first client is the [Smoker controller for the Char-Griller Gravity 980](htt
 |---|---|
 | `POST /v1/cooks` | `{record, key_hash}`: one cook (format below), plus the SHA-256 of a random deletion key the sender keeps. `"test": true` checks the path and stores nothing. |
 | `DELETE /v1/cooks/<id>` | Header `X-Delete-Key`: removes that cook (and, at the next build, from the dataset). |
-| `GET /v1/released` | Stored cooks (shuffled), and ids deleted by their owners. |
+| `GET /v1/released` | A daily snapshot: the stored cooks (shuffled) and the ids deleted by their owners. It changes at most once a day, so it never shows when a cook arrived. |
 
 It refuses any record that isn't exactly the format, and stores nothing about the sender (no IP address, no time
 received, request logging off).

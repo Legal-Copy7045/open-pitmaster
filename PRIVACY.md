@@ -41,7 +41,7 @@ anything that doesn't match it exactly.
 ## Removing shared cooks
 
 Each cook is sent with the hash of a random deletion key that stays on the owner's Home Assistant. *Remove my shared
-cooks* sends the keys. The cooks are deleted from the service immediately and from `data/` at the next nightly build.
+cooks* sends the keys. The cooks are deleted from the service immediately and from `data/` within two nightly builds (the list the build reads is a daily snapshot).
 Only the holder of the key can delete a cook, and the key isn't linked to a person.
 
 ## Licence

@@ -123,11 +123,17 @@ export default {
         return json({ ok: true, deleted: id });
       }
 
+      // A once-a-day snapshot, not a live list: polling it can't tell when a cook arrived (only the day, as the
+      // privacy policy says), and the store is listed at most once a day however often it's asked.
       if (url.pathname === "/v1/released" && request.method === "GET") {
+        const snap = await env.COOKS.get("s:released");
+        if (snap !== null) return new Response(snap, { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
         const cooks = await listAll(env.COOKS, "c:");
         const records = shuffle(cooks.filter(k => k.metadata && k.metadata.r).map(k => k.metadata.r));
         const deleted = (await listAll(env.COOKS, "d:")).map(k => k.name.slice(2));
-        return json({ records, deleted });
+        const body = JSON.stringify({ records, deleted });
+        await env.COOKS.put("s:released", body, { expirationTtl: DAY });
+        return new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
       }
 
       return json({ error: "not found" }, 404);
