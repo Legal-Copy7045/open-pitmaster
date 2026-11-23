@@ -1,0 +1,30 @@
+name: Nightly data build
+
+# Adds the cooks shared since the last run to data/ (one shuffled batch) and rebuilds aggregates.json. PRIVACY.md.
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Add released cooks, rebuild the averages
+        run: python3 build/build.py data --worker https://api.open-pitmaster.workers.dev
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit --quiet -m "Data: $(wc -l < data/cooks.jsonl) shared cooks"
+          git push --quiet

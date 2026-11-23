@@ -1,0 +1,115 @@
+{
+ "valid": [
+  {
+   "v": 1,
+   "id": "0123456789abcdef0123456789abcdef",
+   "grill": "gravity980",
+   "release": "0.2.25",
+   "season": "autumn",
+   "cut": "Pork shoulder",
+   "weight_lb": 8.5,
+   "wrapped": true,
+   "pit_f": 250,
+   "target_f": 203,
+   "stall_h": 3.1,
+   "total_h": 11.6,
+   "outside_f": 35,
+   "rating": 4,
+   "tags": [
+    "juicy",
+    "tender",
+    "great bark"
+   ]
+  },
+  {
+   "v": 1,
+   "id": "fedcba9876543210fedcba9876543210",
+   "grill": "gravity980",
+   "release": "0.2.25",
+   "season": "summer",
+   "cut": "Ribs",
+   "weight_lb": null,
+   "wrapped": null,
+   "pit_f": null,
+   "target_f": null,
+   "stall_h": null,
+   "total_h": 5.5,
+   "outside_f": null,
+   "rating": null,
+   "tags": []
+  }
+ ],
+ "invalid": [
+  [
+   {
+    "note": "free text"
+   },
+   "unexpected field"
+  ],
+  [
+   {
+    "weight_lb": 8.42
+   },
+   "bad value for weight_lb"
+  ],
+  [
+   {
+    "pit_f": 251
+   },
+   "bad value for pit_f"
+  ],
+  [
+   {
+    "outside_f": 37
+   },
+   "bad value for outside_f"
+  ],
+  [
+   {
+    "cut": "Wagyu"
+   },
+   "bad value for cut"
+  ],
+  [
+   {
+    "season": "2026-11-22"
+   },
+   "bad value for season"
+  ],
+  [
+   {
+    "stall_h": 12.0
+   },
+   "stall longer than the cook"
+  ],
+  [
+   {
+    "id": "abc"
+   },
+   "bad value for id"
+  ],
+  [
+   {
+    "tags": [
+     "delicious"
+    ]
+   },
+   "bad value for tags"
+  ],
+  [
+   {
+    "tags": [
+     "juicy",
+     "juicy"
+    ]
+   },
+   "bad value for tags"
+  ],
+  [
+   {
+    "tags": "juicy"
+   },
+   "bad value for tags"
+  ]
+ ]
+}
