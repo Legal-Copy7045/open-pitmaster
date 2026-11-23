@@ -12,6 +12,11 @@ predictions and AI advice can learn from more than their own grill.
 The first client is the [Smoker controller for the Char-Griller Gravity 980](https://github.com/Legal-Copy7045/gravity-controller)
 (Setup → Share cooks).
 
+## The page
+
+https://api.open-pitmaster.workers.dev/ in a browser shows the shared averages by cut, weight, pit and weather
+(worker/src/site.js; it reads data/aggregates.json from this repository in your browser: no tracking, no cookies).
+
 ## What's here
 
 | Path | What |

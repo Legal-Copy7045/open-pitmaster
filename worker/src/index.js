@@ -1,3 +1,4 @@
+import { SITE } from "./site.js";
 // Open Pitmaster: receives anonymous cook summaries (opt-in, from the Smoker integration for the Gravity 980) for the
 // open dataset (data/ in github.com/Legal-Copy7045/open-pitmaster, built nightly in one shuffled batch). Format and privacy rules: PRIVACY.md and format/README.md in that repository.
 //
@@ -88,8 +89,13 @@ export default {
     const url = new URL(request.url);
     const now = Math.floor(Date.now() / 1000);
     try {
-      if (url.pathname === "/" && request.method === "GET")
-        return json({ what: "Open Pitmaster: anonymous, opt-in shared smoker cooks", privacy: "https://github.com/Legal-Copy7045/open-pitmaster/blob/main/PRIVACY.md" });
+      // The public page for people (browsers); the short JSON description for anything else.
+      if ((url.pathname === "/" || url.pathname === "/index.html") && request.method === "GET") {
+        if ((request.headers.get("accept") || "").includes("text/html"))
+          return new Response(SITE, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600",
+            "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://raw.githubusercontent.com; base-uri 'none'; form-action 'none'" } });
+        return json({ what: "Open Pitmaster: anonymous, opt-in shared smoker cooks", page: url.origin + "/", privacy: "https://github.com/Legal-Copy7045/open-pitmaster/blob/main/PRIVACY.md" });
+      }
 
       if (url.pathname === "/v1/cooks" && request.method === "POST") {
         if (env.RL) {  // Cloudflare's rate limiter: counted at the edge, nothing stored here
