@@ -39,7 +39,7 @@ def test_build(tmp_path):
     assert [json.loads(l)["id"] for l in lines] == sorted(json.loads(l)["id"] for l in lines)
     agg = json.loads((data / "aggregates.json").read_text())
     assert agg["cooks"] == 6
-    # Pork shoulder (5 cooks) is published; Ribs (1 cook) isn't.
+    # Pork shoulder (5 cooks, MIN_N) is published; Ribs (1 cook) isn't.
     assert {g["cut"] for g in agg["groups"]} == {"Pork shoulder"}
     top = agg["groups"][0]
     assert top["weight"] == "8-10 lb" and top["pit"] == "225-255°F" and top["outside"] == "30-50°F" and top["n"] == 5
@@ -50,6 +50,9 @@ def test_build(tmp_path):
     src.write_text(json.dumps({"records": incoming["records"], "deleted": [f"{0:032x}"]}))
     cb.main(["x", str(data), "--released", str(src)])
     assert len((data / "cooks.jsonl").read_text().splitlines()) == 5
+    # Down to 4 Pork shoulder cooks: under MIN_N, so nothing is published.
+    assert cb.MIN_N == 5
+    assert json.loads((data / "aggregates.json").read_text())["groups"] == []
 
 
 def test_a_burst_of_look_alike_cooks_is_capped(tmp_path):
@@ -58,3 +61,15 @@ def test_a_burst_of_look_alike_cooks_is_capped(tmp_path):
     src.write_text(json.dumps({"records": [_rec(i, total_h=4.0, stall_h=1.0) for i in range(50)], "deleted": []}))
     assert cb.main(["x", str(data), "--released", str(src)]) == 0
     assert len((data / "cooks.jsonl").read_text().splitlines()) == cb.MAX_NEW_PER_GROUP
+
+
+def test_extremes_are_trimmed_in_big_groups():
+    """With 10+ cooks the top and bottom 10% are left out, so a couple of made-up extremes can't move the figures."""
+    real = [_rec(i, total_h=10.0 + (i % 3) * 0.5, rating=4) for i in range(18)]
+    fake = [_rec(100, total_h=36.0, rating=1), _rec(101, total_h=36.0, rating=1)]
+    g = next(g for g in cb.aggregate(real + fake)["groups"] if g["weight"] == "any weight")
+    assert g["n"] == 20
+    assert g["total_p75"] <= 11.0 and g["rating"] == 4.0
+    # Small groups use every cook.
+    assert cb.trimmed([3, 1, 2]) == [1, 2, 3]
+    assert cb.trimmed(list(range(10))) == list(range(1, 9))

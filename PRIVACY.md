@@ -36,7 +36,7 @@ anything that doesn't match it exactly.
    stored or logged. Cloudflare's network necessarily sees the connection, as any host would.
 3. A nightly job adds the day's cooks to [`data/`](data/) in one shuffled batch and rebuilds the averages. A record
    carries no time, and the batch only shows that a cook was shared sometime that day. Averages are only published
-   for groups of at least 3 cooks.
+   for groups of at least 5 cooks (with 10 or more, the fastest and slowest 10% are left out, so a few odd cooks can't move the average).
 
 ## Removing shared cooks
 

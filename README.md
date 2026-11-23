@@ -21,7 +21,7 @@ https://api.open-pitmaster.workers.dev/ in a browser shows the shared averages b
 
 | Path | What |
 |---|---|
-| [`data/`](data/) | `cooks.jsonl` / `cooks.csv` (every shared cook) and `aggregates.json` (typical times and outcomes per group of 3+ cooks), rebuilt nightly |
+| [`data/`](data/) | `cooks.jsonl` / `cooks.csv` (every shared cook) and `aggregates.json` (typical times and outcomes per group of 5+ cooks), rebuilt nightly |
 | [`format/`](format/) | The record format, with examples every part is tested against |
 | [`worker/`](worker/) | The receiving service (a Cloudflare Worker at `https://api.open-pitmaster.workers.dev`) |
 | [`build/`](build/) | The nightly build: adds released cooks, removes deleted ones, rebuilds the averages |

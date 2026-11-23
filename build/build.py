@@ -29,7 +29,10 @@ SEASONS = ["winter", "spring", "summer", "autumn"]
 TAGS = ["juicy", "tender", "dry", "tough", "undercooked", "just right", "overcooked", "great bark", "soft bark", "good smoke", "too smoky", "too little smoke", "fat rendered", "fat not rendered"]
 FIELDS = ["v", "id", "grill", "release", "season", "cut", "weight_lb", "wrapped", "pit_f", "target_f", "stall_h",
           "total_h", "outside_f", "rating", "tags"]
-MIN_N = 3  # a group needs this many cooks before its averages are published
+MIN_N = 5  # a group needs this many cooks before its averages are published
+# Groups of TRIM_FROM cooks or more drop the top and bottom TRIM of each figure (times, stalls, ratings) before it's
+# worked out, so a few made-up cooks at the extremes can't drag a group's numbers. Smaller groups need MIN_N.
+TRIM_FROM, TRIM = 10, 0.10
 # At most this many new cooks per cut, weight and pit band in one nightly batch: real sharing is a few cooks a day,
 # so a burst of look-alike uploads (someone trying to steer an average) is mostly left out. The rest are dropped,
 # not queued.
@@ -105,6 +108,13 @@ def _q(xs, p):
     return round(xs[f] + (xs[c] - xs[f]) * (k - f), 1)
 
 
+def trimmed(xs: list) -> list:
+    """xs sorted, without the top and bottom TRIM when there are at least TRIM_FROM values."""
+    xs = sorted(xs)
+    k = int(len(xs) * TRIM) if len(xs) >= TRIM_FROM else 0
+    return xs[k:len(xs) - k] if k else xs
+
+
 def aggregate(records: list[dict]) -> dict:
     groups: dict[tuple, list[dict]] = {}
     for r in records:
@@ -119,10 +129,10 @@ def aggregate(records: list[dict]) -> dict:
     for (cut, w, p, o), rs in groups.items():
         if len(rs) < MIN_N:
             continue
-        totals = [r["total_h"] for r in rs]
-        stalls = [r["stall_h"] for r in rs if r["stall_h"] is not None]
+        totals = trimmed([r["total_h"] for r in rs])
+        stalls = trimmed([r["stall_h"] for r in rs if r["stall_h"] is not None])
         wraps = [r["wrapped"] for r in rs if r["wrapped"] is not None]
-        ratings = [r["rating"] for r in rs if r["rating"] is not None]
+        ratings = trimmed([r["rating"] for r in rs if r["rating"] is not None])
         told = [r for r in rs if r["tags"]]  # cooks with "How was it?" feedback
         tag_pct = {t: round(100 * sum(t in r["tags"] for r in told) / len(told)) for t in TAGS} if told else {}
         tag_pct = dict(sorted(((t, p) for t, p in tag_pct.items() if p), key=lambda x: -x[1]))

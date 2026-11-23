@@ -28,7 +28,7 @@ footer{margin-top:40px;font-size:14px;color:var(--ink2)}
 <p style="text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700;color:var(--accent)">Open Pitmaster</p>
 <h1>How long smoker cooks really take</h1>
 <p>Real cooks on Char-Griller Gravity 980 smokers, shared anonymously by their owners: no names, places, dates or notes,
-just rounded numbers and how it turned out. Groups appear once 3 or more cooks are alike.</p>
+just rounded numbers and how it turned out. Groups appear once 5 or more cooks are alike.</p>
 <div class="kpis" id="kpis"></div>
 <div id="filter" style="display:none"><label>Cut <select id="cut"></select></label></div>
 <div id="groups"><div class="empty">Loading…</div></div>

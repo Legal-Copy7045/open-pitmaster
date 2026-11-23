@@ -1,4 +1,4 @@
-# Deployed with `npx wrangler deploy` (see README.md). KV namespace id and the rate limiter are set
+# Deployed with `npx wrangler deploy` (see README.md). KV namespace id and the rate limiters are set
 # per account; logs stay off: the Worker must not record anything about who sends a cook.
 name = "api"
 main = "src/index.js"
@@ -12,8 +12,29 @@ enabled = false
 binding = "COOKS"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
 
+# Rate limits, keyed by IPv4 address or IPv6 /64 (src/index.js clientKey; counted at the edge, never stored).
+# Cloudflare's rate limiter only allows a period of 10 or 60 seconds.
+# RL: any upload attempt (before the body is read), deletions and the snapshot: 10 a minute.
 [[unsafe.bindings]]
 name = "RL"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 10, period = 60 }
+
+# RL_UPLOAD: an upload that would be stored: 1 a minute.
+[[unsafe.bindings]]
+name = "RL_UPLOAD"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 1, period = 60 }
+
+# CAP: the one service-wide count of stores per UTC day (class DailyCap in src/index.js; DAILY_CAP). A SQLite-backed
+# Durable Object (the kind the Workers free plan allows). Uploads are refused (503) without it.
+[[durable_objects.bindings]]
+name = "CAP"
+class_name = "DailyCap"
+
+# Durable Object migrations: append a new [[migrations]] entry for any later change; never edit or remove this one.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DailyCap"]
