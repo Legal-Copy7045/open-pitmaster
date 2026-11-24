@@ -4,6 +4,6 @@ Shared smoker cooks: 0 so far. Every record is anonymous and was shared by choic
 
 - `cooks.jsonl` / `cooks.csv`: every shared cook (format: ../format/README.md).
 - `aggregates.json`: typical times and how cooks turned out, by cut, weight, pit and outside temperature (groups
-  with at least 3 cooks).
+  with at least 5 cooks).
 
 Rebuilt nightly by ../.github/workflows/nightly.yml. Licence: CC0 1.0 (public domain); see LICENSE.
