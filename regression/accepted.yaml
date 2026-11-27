@@ -1,0 +1,5 @@
+# Scanner findings accepted on purpose (standard section 3.1), each with its reason.
+- tool: bandit
+  id: B310
+  where: build/build.py (urlopen of <worker>/v1/released)
+  reason: "The URL is the fixed https Worker address passed by nightly.yml (the code's own comment: noqa S310 - fixed https URL). Recorded as the project's existing decision; confirm at the next regression."

@@ -1,0 +1,18 @@
+# Feature -> the checks that cover it. match: regexes over "<stage>:<check key>".
+- feature: Record format and validation (anonymous, rounded, fixed lists)
+  match: ['^unit:worker:.*validate accepts', '^unit:worker:.*refuses bad uploads', '^unit:build:.*same_rules_as_the_worker']
+- feature: Upload, snapshot and deletion
+  match: ['^unit:worker:.*upload, released, deleted', "^unit:worker:.*deletion key"]
+  manual: [share and remove a cook end to end]
+- feature: Abuse limits (daily cap, rate limits, size limit)
+  match: ['^unit:worker:.*daily cap', '^unit:worker:.*concurrent uploads', '^unit:worker:.*rate limits', '^unit:worker:.*oversized body']
+- feature: Nightly build (merge, delete, averages of 5+, trimming)
+  match: ['^unit:build:.*test_build', '^unit:build:.*burst', '^unit:build:.*trimmed']
+  manual: [nightly build ran this week]
+- feature: Public averages page
+  match: ['^page:page:', '^walkthrough:']
+- feature: Released service and data
+  match: ['^live:public$']
+  manual: [deployed worker matches the release]
+- feature: Versions and privacy guard
+  match: ['^ci:versions$', '^ci:privacy$', '^ci:bandit$', '^ci:gitleaks$']

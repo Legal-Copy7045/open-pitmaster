@@ -40,5 +40,17 @@ received, request logging off).
 ## Running it
 
 - Tests: `cd worker && node --test test/*.test.js`, and `python3 -m pytest build`.
-- Deploy: create a KV namespace, put its id in `worker/wrangler.toml`, then `cd worker && npx wrangler deploy`.
-  Keep `[observability] enabled = false`.
+- Tests: also `node --test regression/page/page.test.mjs` (the page in a browser) and `python3 regression/run.py check`.
+
+## Releases and deployment
+
+`VERSION` and [`CHANGELOG.md`](CHANGELOG.md) change with every merge to `main`; a merged version bump is the release
+(CI tags `v<VERSION>` and publishes the GitHub Release). The Worker is deployed by hand, only from a release tag:
+
+```bash
+git fetch --tags && git checkout v$(cat VERSION)     # the release, never an unreleased commit
+cd worker && npx wrangler deploy                     # wrangler version: .github/upstreams.yaml
+```
+
+First time: create a KV namespace and put its id in `worker/wrangler.toml`. Keep `[observability] enabled = false`.
+The nightly data build (`.github/workflows/nightly.yml`) publishes `data/` every day and needs no release.
