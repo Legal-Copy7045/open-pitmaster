@@ -1,0 +1,13 @@
+{
+ "v": 1,
+ "cooks": 87,
+ "min_n": 5,
+ "updated": "2026-11-20",
+ "groups": [
+  {"cut": "Pork shoulder", "weight": "any weight", "pit": "any pit", "outside": "any weather", "n": 41, "total_h": 11.2, "total_p25": 9.8, "total_p75": 12.9, "stall_h": 3.1, "wrapped_pct": 63, "rating": 4.3, "tags": {"juicy": 58, "great bark": 44, "tender": 39, "dry": 7}},
+  {"cut": "Pork shoulder", "weight": "8-10 lb", "pit": "225-249 °F", "outside": "40-59 °F", "n": 9, "total_h": 12.4, "total_p25": 11.6, "total_p75": 13.5, "stall_h": 3.4, "wrapped_pct": 78, "rating": 4.5, "tags": {"juicy": 67, "tender": 56}},
+  {"cut": "Brisket", "weight": "any weight", "pit": "any pit", "outside": "any weather", "n": 23, "total_h": 13.8, "total_p25": 12.1, "total_p75": 15.6, "stall_h": 4.0, "wrapped_pct": 87, "rating": 4.0, "tags": {"tender": 48, "great bark": 35, "dry": 13}},
+  {"cut": "Ribs", "weight": "any weight", "pit": "any pit", "outside": "any weather", "n": 17, "total_h": 5.6, "total_p25": 5.1, "total_p75": 6.2, "stall_h": null, "wrapped_pct": 41, "rating": 4.6, "tags": {}},
+  {"cut": "Poultry", "weight": "any weight", "pit": "any pit", "outside": "any weather", "n": 6, "total_h": 3.9, "total_p25": 3.5, "total_p75": 4.4, "stall_h": null, "wrapped_pct": null, "rating": null, "tags": {"juicy": 50}}
+ ]
+}

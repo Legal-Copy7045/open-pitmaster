@@ -1,0 +1,13 @@
+# The project standard this repository follows (github.com/Legal-Copy7045/project-standards).
+standard: 1.1.0
+profile: public            # public | private (only CodeQL upload and nothing else differs)
+weekly_slot: "Sun 03:47"   # STANDARD.md 1.6
+beyond:                    # more advanced than the baseline, kept on purpose
+  - {concept: "privacy by design", what: "The Worker refuses any record that isn't exactly the anonymous format, stores nothing about the sender and keeps logs off; PRIVACY.md is the full list, checked as claims CLM-001..008."}
+  - {concept: "page check in CI", what: "The public page is rendered in Chromium (desktop and phone, made-up data, no network) on every PR that touches it, including an injection check and a no-cookies, no-third-party-requests check."}
+exceptions:
+  - {rule: "1.1 one workflow", reason: "nightly.yml (the nightly data build) is the product, not CI: it publishes data/ every day and stays as it is."}
+  - {rule: "2.2 nothing publishes outside the release path", reason: "The nightly build commits data/ to main daily; it is data, not code, and needs no release. The Worker itself is only deployed from a release tag."}
+  - {rule: "2.2 deploy from the release path", reason: "The Worker is deployed by hand (cd worker && npx wrangler deploy) from the release tag: no Cloudflare token is kept in GitHub."}
+  - {rule: "1.5 dependency audits", reason: "The worker and the build have no third-party dependencies (stdlib / Workers runtime only), so there is nothing for npm audit or pip-audit to read; Dependabot still watches worker/."}
+  - {rule: "3.5 tap targets", reason: "Inline links in sentences are exempt from the 44x44 check (WCAG 2.5.8); form controls and stand-alone links are checked."}

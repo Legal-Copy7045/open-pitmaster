@@ -1,0 +1,5 @@
+# Versions Dependabot doesn't track (STANDARD.md 5): the weekly maintenance session checks each for a newer release.
+# source: pypi:<name> | npm:<name> | github:<owner>/<repo> (release tags) | docker:<image>
+- {name: wrangler, current: "4.169.0", source: "npm:wrangler", where: "README.md (deploy: npx wrangler@<current> deploy)"}
+- {name: Workers compatibility date, current: "2026-11-01", source: "manual", where: "worker/wrangler.toml (compatibility_date): move it forward with a release after reading Cloudflare's compatibility flags"}
+- {name: Playwright (page check), current: "1.63.0", source: "npm:playwright", where: ".github/workflows/ci.yml (page job)"}

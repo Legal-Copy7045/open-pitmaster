@@ -1,0 +1,15 @@
+# What only a person can check. Record results: python3 regression/run.py manual <key> pass|fail --note "..."
+- key: deployed worker matches the release
+  area: deploy
+  steps:
+    - "After `cd worker && npx wrangler deploy` from the release tag, Cloudflare shows that deployment"
+    - "The Worker's observability (logs) is off"
+- key: share and remove a cook end to end
+  area: sharing
+  steps:
+    - "From a client, share one made-up cook with test: true; it is accepted and not stored"
+    - "Use 'Remove my shared cooks' on a cook shared earlier; it is gone from /v1/released the next day"
+- key: nightly build ran this week
+  area: data
+  steps:
+    - "In the Actions tab, the 'Nightly data build' runs of the last 7 days succeeded"

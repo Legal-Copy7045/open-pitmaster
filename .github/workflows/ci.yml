@@ -1,0 +1,115 @@
+# CI per the project standard (github.com/Legal-Copy7045/project-standards, STANDARD.md section 1).
+#  - pull request: nothing while a draft; then the quick checks (versions, privacy, secrets, worker and build tests),
+#    and the page check in a browser only when the page or the format changed;
+#  - push to main: the private-terms check, and the release path when VERSION has no tag yet (nothing is re-tested);
+#  - weekly and by hand: everything, full-history secret scan; publishes nothing
+#    (workflow_dispatch with release: true on main retries a release).
+# ci-result is the only required check. The nightly data build (nightly.yml) is the product, not CI, and stays apart.
+name: CI
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "47 3 * * 0"        # Sunday 03:47 UTC: this project's slot (STANDARD.md 1.6)
+  workflow_dispatch:
+    inputs:
+      release: {type: boolean, default: false, description: "Release VERSION if it has no tag yet (main only)"}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.c.outputs.release }}
+      full: ${{ steps.c.outputs.full }}
+      page: ${{ steps.c.outputs.page }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {fetch-depth: 0, persist-credentials: false}
+      - id: c
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          RELEASE_INPUT: ${{ inputs.release }}
+        run: python3 .github/scripts/changes.py
+
+  quick:
+    needs: changes
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - name: Versions
+        run: python3 .github/scripts/check_versions.py
+      - name: Worker
+        run: cd worker && node --test test/*.test.js
+      - name: Nightly build
+        run: pip install --quiet pytest && python3 -m pytest -q -p no:cacheprovider build
+
+  privacy:
+    needs: changes
+    if: github.event_name != 'push'
+    uses: Legal-Copy7045/project-standards/.github/workflows/privacy.yml@1f5964bc45844dc0cefda0374af8f8128daa1b40 # v1.1.0
+
+  privacy-denylist:
+    needs: changes
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref_name == 'main')
+    uses: Legal-Copy7045/project-standards/.github/workflows/privacy.yml@1f5964bc45844dc0cefda0374af8f8128daa1b40 # v1.1.0
+    with: {denylist: true}
+    secrets: inherit
+
+  secrets:
+    needs: changes
+    if: github.event_name != 'push'
+    uses: Legal-Copy7045/project-standards/.github/workflows/gitleaks.yml@1f5964bc45844dc0cefda0374af8f8128daa1b40 # v1.1.0
+    with: {full-history: "${{ needs.changes.outputs.full == 'true' }}"}
+
+  # The public page rendered from a made-up aggregates.json, desktop and phone (regression/page/).
+  page:
+    needs: changes
+    if: needs.changes.outputs.page == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - name: Browser
+        run: |
+          npm install --no-save --no-audit --no-fund --prefix regression/page playwright@1.63.0
+          regression/page/node_modules/.bin/playwright install --with-deps chromium
+      - name: Page
+        run: node --test regression/page/page.test.mjs
+
+  release:
+    needs: [changes, privacy-denylist]
+    if: needs.changes.outputs.release == 'true'
+    permissions:
+      contents: write
+    uses: Legal-Copy7045/project-standards/.github/workflows/release.yml@1f5964bc45844dc0cefda0374af8f8128daa1b40 # v1.1.0
+    with:
+      title: "Open Pitmaster"
+
+  ci-result:
+    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
+    needs: [changes, quick, privacy, privacy-denylist, secrets, page, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | grep -qE '"(failure|cancelled)"'; then echo "A needed job failed or was cancelled."; exit 1; fi

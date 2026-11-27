@@ -1,0 +1,7 @@
+# Which slow CI groups a pull request starts (STANDARD.md 1.2). Regexes over changed paths.
+# The worker and build tests are fast and run in `quick` on every ready PR; only the browser check is a slow group.
+ignore: ['^docs/', '\.md$', '^regression/(?!page/)', '^\.claude/', '^LICENSE$', '^data/', '^build/', '^\.github/dependabot\.yml$', '^\.github/(upstreams|standard|versions)\.yaml$', '^VERSION$', '^worker/(test/|wrangler\.toml$|package\.json$)', '^\.gitignore$']
+shared: ['^\.github/workflows/ci\.yml$', '^\.github/scripts/changes\.py$', '^\.github/changes\.yaml$']
+groups:
+  page: ['^worker/src/', '^format/', '^regression/page/']
+# A changed file that matches nothing above starts every group (safe default).

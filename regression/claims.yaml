@@ -1,0 +1,33 @@
+# Every security and privacy claim the project makes (standard section 3.4). code: globs of the files that keep it.
+- id: CLM-001
+  claim: Opt-in only. Nothing is shared unless the owner turns sharing on; the service stores only what a client sends on purpose.
+  where: [README.md, PRIVACY.md]
+  code: ["worker/src/index.js"]
+- id: CLM-002
+  claim: Anonymous records. The service refuses any record that isn't exactly the format (rounded numbers, fixed lists, no dates, places, notes, photos, names or device identifiers).
+  where: [PRIVACY.md, README.md, format/README.md]
+  code: ["worker/src/index.js", "build/build.py", "format/examples.json"]
+- id: CLM-003
+  claim: Nothing that links two cooks. Each cook has a new random id; the deletion key's hash isn't linked to a person.
+  where: [PRIVACY.md]
+  code: ["worker/src/index.js", "build/build.py"]
+- id: CLM-004
+  claim: Nothing about the sender is stored or logged (no IP address, no time received; request logging off; rate limits are counted at the edge, never stored).
+  where: [README.md, PRIVACY.md]
+  code: ["worker/src/index.js", "worker/wrangler.toml"]
+- id: CLM-005
+  claim: Arrival times aren't revealed. The snapshot changes at most once a day and is shuffled; the nightly build adds the day's cooks in one shuffled batch.
+  where: [README.md, PRIVACY.md]
+  code: ["worker/src/index.js", "build/build.py", ".github/workflows/nightly.yml"]
+- id: CLM-006
+  claim: Removable. Only the holder of a cook's deletion key can delete it; it goes from the service immediately and from data/ within two nightly builds.
+  where: [README.md, PRIVACY.md]
+  code: ["worker/src/index.js", "build/build.py"]
+- id: CLM-007
+  claim: Averages are only published for groups of 5 or more cooks (10+: fastest and slowest 10% left out).
+  where: [PRIVACY.md, README.md]
+  code: ["build/build.py"]
+- id: CLM-008
+  claim: The public page has no tracking and no cookies; it reads only data/aggregates.json in the visitor's browser.
+  where: [README.md]
+  code: ["worker/src/site.js", "worker/src/index.js"]

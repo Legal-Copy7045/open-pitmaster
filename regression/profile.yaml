@@ -1,0 +1,48 @@
+# Open Pitmaster's regression profile (standard section 3.1). The global /regression, /walkthrough and /full-check
+# skills read this file; nothing project-specific lives in the skills.
+name: Open Pitmaster
+type: worker
+ui: true                    # the public averages page (worker/src/site.js)
+report_tz: Europe/London
+version_file: VERSION
+changelog: CHANGELOG.md
+security_tools: "bandit -q -r build (B310 accepted, see accepted.yaml); the worker and the build have no dependencies to audit"
+roles: [visitor]            # the page has no sign-in: everyone sees the same thing
+
+stages:
+  ci:
+    prefix: CI
+    commands:
+      - {key: versions, run: "python3 .github/scripts/check_versions.py"}
+      - {key: privacy, run: "BASE=origin/main HEAD=HEAD DEFAULT_BRANCH=main python3 .github/scripts/privacy_guard.py"}
+      - {key: bandit, run: "command -v bandit >/dev/null || exit 77; bandit -q -r build -x build/test_build.py -s B310", skip_exit: 77}
+      - {key: gitleaks, run: "command -v gitleaks >/dev/null || exit 77; gitleaks git . --redact --no-banner --log-opts=origin/main..HEAD", skip_exit: 77}
+  unit:
+    prefix: UNIT
+    commands:
+      - {key: worker, run: "cd worker && node --test --test-reporter=junit --test-reporter-destination={junit} test/*.test.js", junit: true}
+      - {key: build, run: "python3 -m pytest -q -p no:cacheprovider --junitxml={junit} build", junit: true}
+  page:
+    prefix: PAGE
+    commands:
+      - {key: page, run: "node --test --test-reporter=junit --test-reporter-destination={junit} regression/page/page.test.mjs", junit: true}
+  live:
+    prefix: LIVE            # read-only GETs of the page, the data files and the daily snapshot; skipped (77) offline
+    commands:
+      - {key: public, run: "python3 regression/live.py", skip_exit: 77}
+  manual:
+    prefix: MAN
+  walkthrough:
+    prefix: WALK
+    commands:
+      - {key: crawl, run: "node regression/walkthrough.mjs"}   # writes out/walkthrough.json + walkthrough-checks.json
+
+walkthrough:
+  ui_paths: ['^worker/src/site\.js$', '^regression/page/', '^regression/walkthrough\.mjs$']
+
+reviewers:
+  bugs: "Risky paths: worker/src/index.js validate() and the upload/delete/released routes, the daily cap (DailyCap) and rate limits, build/build.py merging, deleting and grouping (min 5, trimming)."
+  claims: "Claims are in PRIVACY.md and README.md (see claims.yaml): opt-in, anonymous, removable, nothing about the sender stored."
+  exposure: "Deployment surface: worker/wrangler.toml (logs off, bindings), the public routes, .github/workflows (nightly.yml pushes to main with contents: write), the public data/ files."
+  desktop: "One public page; look at how the averages read and whether the filter and empty states are clear."
+  phone: "Same page at 390 px: the bar rows stack; check the filter and the footer links."
